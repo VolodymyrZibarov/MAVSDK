@@ -17,6 +17,11 @@ target_link_libraries(mavsdk
     tinyxml2::tinyxml2
 )
 
+target_compile_definitions(mavsdk PUBLIC
+    MAVLINK_EXTERNAL_RX_STATUS
+    MAVLINK_EXTERNAL_RX_BUFFER
+    )
+
 if (NOT APPLE AND NOT ANDROID AND NOT MSVC)
     target_link_libraries(mavsdk
         PRIVATE

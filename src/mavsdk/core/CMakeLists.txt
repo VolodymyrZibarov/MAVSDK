@@ -10,7 +10,7 @@ get_target_property(
 )
 
 configure_file(version.h.in version.h)
-configure_file(include/mavsdk/mavlink_include.h.in include/mavsdk/mavlink_include.h)
+configure_file(include/mavsdk/mavlink_include.h.in include/mavsdk/mavlink_include_build.h)
 
 target_sources(mavsdk
     PRIVATE
@@ -169,7 +169,7 @@ install(FILES
     include/mavsdk/geometry.h
     include/mavsdk/server_component.h
     include/mavsdk/mavlink_address.h
-    ${CMAKE_CURRENT_BINARY_DIR}/include/mavsdk/mavlink_include.h
+    ${CMAKE_CURRENT_BINARY_DIR}/include/mavsdk/mavlink_include_build.h
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/mavsdk"
 )
 

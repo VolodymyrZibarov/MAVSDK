@@ -2,6 +2,9 @@
 
 #include "mavsdk_impl.h"
 
+mavlink_status_t m_mavlink_status[MAVLINK_COMM_NUM_BUFFERS];
+mavlink_message_t m_mavlink_buffer[MAVLINK_COMM_NUM_BUFFERS];
+
 namespace mavsdk {
 
 Mavsdk::Mavsdk(Configuration configuration)
