@@ -4,7 +4,9 @@
 #include "plugin_impl_base.h"
 #include "callback_list.h"
 #include "file_cache.h"
+#if BUILD_WITHOUT_CURL != 1
 #include "http_loader.h"
+#endif
 #include <json/json.h>
 
 #include <optional>

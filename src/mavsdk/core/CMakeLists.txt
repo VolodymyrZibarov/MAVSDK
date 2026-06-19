@@ -1,7 +1,10 @@
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-find_package(MAVLink REQUIRED)
+include("${DEPS_INSTALL_PATH}/lib/cmake/MAVLink/MAVLinkConfig.cmake" OPTIONAL)
+if(NOT TARGET MAVLink::mavlink)
+    find_package(MAVLink REQUIRED)
+endif()
 
 get_target_property(
     MAVLINK_INCLUDE_DIR

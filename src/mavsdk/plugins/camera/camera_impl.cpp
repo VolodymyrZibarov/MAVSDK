@@ -2,7 +2,9 @@
 #include "camera_definition.h"
 #include "system.h"
 #include "mavsdk_math.h"
+#if BUILD_WITHOUT_CURL != 1
 #include "http_loader.h"
+#endif
 #include "unused.h"
 #include "callback_list.tpp"
 #include "fs_utils.h"

@@ -6,10 +6,16 @@ add_subdirectory(core)
 add_subdirectory(plugins)
 
 hunter_add_package(jsoncpp)
-find_package(jsoncpp REQUIRED)
+include("${DEPS_INSTALL_PATH}/lib/cmake/jsoncpp/jsoncppConfig.cmake" OPTIONAL)
+if(NOT TARGET JsonCpp::JsonCpp)
+    find_package(jsoncpp REQUIRED)
+endif()
 
 hunter_add_package(tinyxml2)
-find_package(tinyxml2 REQUIRED)
+include("${DEPS_INSTALL_PATH}/lib/cmake/tinyxml2/tinyxml2-config.cmake" OPTIONAL)
+if(NOT TARGET tinyxml2::tinyxml2)
+    find_package(tinyxml2 REQUIRED)
+endif()
 
 target_link_libraries(mavsdk
     PRIVATE

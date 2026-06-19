@@ -37,11 +37,17 @@ endif()
 
 # This will noop if hunter is not enabled
 hunter_add_package(jsoncpp)
-hunter_add_package(CURL)
 hunter_add_package(lzma)
 
-find_package(CURL REQUIRED)
-find_package(LibLZMA REQUIRED)
+if(NOT BUILD_WITHOUT_CURL)
+    hunter_add_package(CURL)
+    find_package(CURL REQUIRED)
+endif()
+
+include("${DEPS_INSTALL_PATH}/lib/cmake/liblzma/liblzma-config.cmake" OPTIONAL)
+if(NOT TARGET LibLZMA::LibLZMA)
+    find_package(LibLZMA REQUIRED)
+endif()
 
 if(BUILD_TESTS AND (IOS OR ANDROID))
     message(STATUS "Building for iOS or Android: forcing BUILD_TESTS to FALSE...")

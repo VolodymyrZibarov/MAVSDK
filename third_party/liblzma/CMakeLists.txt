@@ -10,6 +10,8 @@ list(APPEND CMAKE_ARGS
     "-DCMAKE_POSITION_INDEPENDENT_CODE=ON"
     "-DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
     "-DBUILD_SHARED_LIBS=OFF"
+    "-DBUILD_TESTING=OFF"
+    "-DENABLE_THREADS=OFF"
     "-DCMAKE_CFG_INTDIR=${CMAKE_CFG_INTDIR}"
     "-DCMAKE_DEBUG_POSTFIX=d"
     "-DCMAKE_TRY_COMPILE_CONFIGURATION=${CMAKE_TRY_COMPILE_CONFIGURATION}"
@@ -33,4 +35,6 @@ ExternalProject_Add(
         URL https://github.com/tukaani-project/xz/releases/download/v5.4.5/xz-5.4.5.tar.gz
         URL_MD5 d2bb81e1a1a7808352c4ca28622f5c72
         CMAKE_ARGS "${CMAKE_ARGS}"
+        BUILD_COMMAND ${CMAKE_COMMAND} --build <BINARY_DIR> --target liblzma
+        INSTALL_COMMAND ${CMAKE_COMMAND} --install <BINARY_DIR> --component liblzma_Development
 )
