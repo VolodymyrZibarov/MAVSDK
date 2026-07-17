@@ -10,7 +10,10 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <netdb.h>
+#include <poll.h>
+#include <unistd.h>
 #endif
 
 #include <cassert>
@@ -23,6 +26,10 @@
 #endif
 
 namespace mavsdk {
+
+namespace {
+constexpr int CONNECT_TIMEOUT_MS = 3000;
+}
 
 /* change to remote_ip and remote_port */
 TcpConnection::TcpConnection(
@@ -91,14 +98,155 @@ ConnectionResult TcpConnection::setup_port()
 
     memcpy(&remote_addr.sin_addr, hp->h_addr, hp->h_length);
 
+#ifdef WINDOWS
+    u_long non_blocking = 1;
+    if (ioctlsocket(_socket_fd.get(), FIONBIO, &non_blocking) != 0) {
+        LogErr() << "ioctlsocket set non-blocking error: " << WSAGetLastError();
+        _is_ok = false;
+        return ConnectionResult::SocketConnectionError;
+    }
+
+    auto restore_blocking = [this]() {
+        u_long blocking = 0;
+        if (ioctlsocket(_socket_fd.get(), FIONBIO, &blocking) != 0) {
+            LogErr() << "ioctlsocket restore blocking error: " << WSAGetLastError();
+            return false;
+        }
+        return true;
+    };
+
     if (connect(
             _socket_fd.get(),
             reinterpret_cast<sockaddr*>(&remote_addr),
             sizeof(struct sockaddr_in)) < 0) {
-        LogErr() << "connect error: " << GET_ERROR(errno);
+        const auto connect_error = WSAGetLastError();
+        if (connect_error != WSAEWOULDBLOCK && connect_error != WSAEINPROGRESS) {
+            LogErr() << "connect error: " << connect_error;
+            restore_blocking();
+            _is_ok = false;
+            return ConnectionResult::SocketConnectionError;
+        }
+
+        fd_set write_fds;
+        FD_ZERO(&write_fds);
+        FD_SET(_socket_fd.get(), &write_fds);
+
+        timeval timeout {};
+        timeout.tv_sec = CONNECT_TIMEOUT_MS / 1000;
+        timeout.tv_usec = (CONNECT_TIMEOUT_MS % 1000) * 1000;
+
+        const auto select_result = select(0, nullptr, &write_fds, nullptr, &timeout);
+        if (select_result == 0) {
+            LogErr() << "connect timeout";
+            restore_blocking();
+            _is_ok = false;
+            return ConnectionResult::Timeout;
+        }
+        if (select_result < 0) {
+            LogErr() << "connect select error: " << WSAGetLastError();
+            restore_blocking();
+            _is_ok = false;
+            return ConnectionResult::SocketConnectionError;
+        }
+
+        int socket_error = 0;
+        int socket_error_len = sizeof(socket_error);
+        if (getsockopt(
+                _socket_fd.get(),
+                SOL_SOCKET,
+                SO_ERROR,
+                reinterpret_cast<char*>(&socket_error),
+                &socket_error_len) < 0) {
+            LogErr() << "connect getsockopt error: " << WSAGetLastError();
+            restore_blocking();
+            _is_ok = false;
+            return ConnectionResult::SocketConnectionError;
+        }
+        if (socket_error != 0) {
+            LogErr() << "connect error: " << socket_error;
+            restore_blocking();
+            _is_ok = false;
+            return ConnectionResult::SocketConnectionError;
+        }
+    }
+
+    if (!restore_blocking()) {
         _is_ok = false;
         return ConnectionResult::SocketConnectionError;
     }
+#else
+    const auto flags = fcntl(_socket_fd.get(), F_GETFL, 0);
+    if (flags == -1) {
+        LogErr() << "fcntl get flags error: " << GET_ERROR(errno);
+        _is_ok = false;
+        return ConnectionResult::SocketConnectionError;
+    }
+
+    if (fcntl(_socket_fd.get(), F_SETFL, flags | O_NONBLOCK) == -1) {
+        LogErr() << "fcntl set non-blocking error: " << GET_ERROR(errno);
+        _is_ok = false;
+        return ConnectionResult::SocketConnectionError;
+    }
+
+    auto restore_flags = [this, flags]() {
+        if (fcntl(_socket_fd.get(), F_SETFL, flags) == -1) {
+            LogErr() << "fcntl restore flags error: " << GET_ERROR(errno);
+            return false;
+        }
+        return true;
+    };
+
+    if (connect(
+            _socket_fd.get(),
+            reinterpret_cast<sockaddr*>(&remote_addr),
+            sizeof(struct sockaddr_in)) < 0) {
+        if (errno != EINPROGRESS) {
+            LogErr() << "connect error: " << GET_ERROR(errno);
+            restore_flags();
+            _is_ok = false;
+            return ConnectionResult::SocketConnectionError;
+        }
+
+        pollfd socket_poll {};
+        socket_poll.fd = _socket_fd.get();
+        socket_poll.events = POLLOUT;
+
+        const auto poll_result = poll(&socket_poll, 1, CONNECT_TIMEOUT_MS);
+        if (poll_result == 0) {
+            LogErr() << "connect timeout";
+            restore_flags();
+            _is_ok = false;
+            return ConnectionResult::Timeout;
+        }
+        if (poll_result < 0) {
+            LogErr() << "connect poll error: " << GET_ERROR(errno);
+            restore_flags();
+            _is_ok = false;
+            return ConnectionResult::SocketConnectionError;
+        }
+
+        int socket_error = 0;
+        socklen_t socket_error_len = sizeof(socket_error);
+        if (getsockopt(
+                _socket_fd.get(), SOL_SOCKET, SO_ERROR, &socket_error, &socket_error_len) < 0) {
+            LogErr() << "connect getsockopt error: " << GET_ERROR(errno);
+            restore_flags();
+            _is_ok = false;
+            return ConnectionResult::SocketConnectionError;
+        }
+        if (socket_error != 0) {
+            LogErr() << "connect error: " << GET_ERROR(socket_error);
+            restore_flags();
+            _is_ok = false;
+            return ConnectionResult::SocketConnectionError;
+        }
+    }
+
+    if (!restore_flags()) {
+        _is_ok = false;
+        return ConnectionResult::SocketConnectionError;
+    }
+#endif
 
     _is_ok = true;
     return ConnectionResult::Success;
