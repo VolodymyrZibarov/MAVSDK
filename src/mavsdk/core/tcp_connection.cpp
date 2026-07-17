@@ -113,6 +113,13 @@ ConnectionResult TcpConnection::stop()
 {
     _should_exit = true;
 
+    if (!_socket_fd.empty()) {
+#ifdef WINDOWS
+        shutdown(_socket_fd.get(), SD_BOTH);
+#else
+        shutdown(_socket_fd.get(), SHUT_RDWR);
+#endif
+    }
     _socket_fd.close();
 
     if (_recv_thread) {
