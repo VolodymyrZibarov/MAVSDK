@@ -748,7 +748,16 @@ void MavlinkParameterClient::process_param_value(const mavlink_message_t& messag
                         item.param_identifier,
                         safe_param_id,
                         static_cast<int16_t>(param_value.param_index))) {
-                    LogWarn() << "Got unexpected response on work item";
+                    if (const auto requested_param_id =
+                            std::get_if<std::string>(&item.param_identifier)) {
+                        LogWarn() << "Got unexpected response on work item: requested param_id '"
+                                  << *requested_param_id << "', received param_id '"
+                                  << safe_param_id << "'";
+                    } else {
+                        LogWarn() << "Got unexpected response on work item: requested param_index "
+                                  << std::get<int16_t>(item.param_identifier)
+                                  << ", received param_index " << param_value.param_index;
+                    }
                     // No match, let's just return the borrowed work item.
                     return;
                 }
@@ -885,7 +894,16 @@ void MavlinkParameterClient::process_param_ext_value(const mavlink_message_t& me
                         item.param_identifier,
                         safe_param_id,
                         static_cast<int16_t>(param_ext_value.param_index))) {
-                    LogWarn() << "Got unexpected response on work item";
+                    if (const auto requested_param_id =
+                            std::get_if<std::string>(&item.param_identifier)) {
+                        LogWarn() << "Got unexpected response on work item: requested param_id '"
+                                  << *requested_param_id << "', received param_id '"
+                                  << safe_param_id << "'";
+                    } else {
+                        LogWarn() << "Got unexpected response on work item: requested param_index "
+                                  << std::get<int16_t>(item.param_identifier)
+                                  << ", received param_index " << param_ext_value.param_index;
+                    }
                     // No match, let's just return the borrowed work item.
                     return;
                 }

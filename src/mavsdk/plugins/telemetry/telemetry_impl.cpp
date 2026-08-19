@@ -2946,74 +2946,9 @@ void TelemetryImpl::check_calibration()
     }
     if (_system_impl->has_autopilot()) {
         if (_system_impl->autopilot() == Autopilot::ArduPilot) {
-            // We need to ask for the home position from ArduPilot
-            request_home_position_async();
-
-            // ArduPilot calibration sets the offsets,
-            // if any offset is 0 the calibration is not complete/unhealthy.
-            _system_impl->get_param_float_async(
-                std::string("INS_GYROFFS_X"),
-                [this](MavlinkParameterClient::Result result, float value) {
-                    receive_param_cal_gyro_offset_x(result, value);
-                },
-                this);
-
-            _system_impl->get_param_float_async(
-                std::string("INS_GYROFFS_Y"),
-                [this](MavlinkParameterClient::Result result, float value) {
-                    receive_param_cal_gyro_offset_y(result, value);
-                },
-                this);
-
-            _system_impl->get_param_float_async(
-                std::string("INS_GYROFFS_Z"),
-                [this](MavlinkParameterClient::Result result, float value) {
-                    receive_param_cal_gyro_offset_z(result, value);
-                },
-                this);
-
-            _system_impl->get_param_float_async(
-                std::string("INS_ACCOFFS_X"),
-                [this](MavlinkParameterClient::Result result, float value) {
-                    receive_param_cal_accel_offset_x(result, value);
-                },
-                this);
-
-            _system_impl->get_param_float_async(
-                std::string("INS_ACCOFFS_Y"),
-                [this](MavlinkParameterClient::Result result, float value) {
-                    receive_param_cal_accel_offset_y(result, value);
-                },
-                this);
-
-            _system_impl->get_param_float_async(
-                std::string("INS_ACCOFFS_Z"),
-                [this](MavlinkParameterClient::Result result, float value) {
-                    receive_param_cal_accel_offset_z(result, value);
-                },
-                this);
-
-            _system_impl->get_param_float_async(
-                std::string("COMPASS_OFS_X"),
-                [this](MavlinkParameterClient::Result result, float value) {
-                    receive_param_cal_mag_offset_x(result, value);
-                },
-                this);
-
-            _system_impl->get_param_float_async(
-                std::string("COMPASS_OFS_Y"),
-                [this](MavlinkParameterClient::Result result, float value) {
-                    receive_param_cal_mag_offset_y(result, value);
-                },
-                this);
-
-            _system_impl->get_param_float_async(
-                std::string("COMPASS_OFS_Z"),
-                [this](MavlinkParameterClient::Result result, float value) {
-                    receive_param_cal_mag_offset_z(result, value);
-                },
-                this);
-
+            // ArduPilot reports calibration state using the SYS_STATUS sensor health bits.
+            _system_impl->remove_call_every(_calibration_cookie);
+            return;
         } else {
             _system_impl->get_param_int_async(
                 std::string("CAL_GYRO0_ID"),
